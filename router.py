@@ -12,8 +12,8 @@ logger = logging.getLogger("router")
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "AQ.Ab8RN6JSwidaknBN5NKvZmxfzFHweHrsQncfcoVNRMbTo5CnQQ")
-OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "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")
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "insert-ur-key")
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "insert-ur-key")
 
 # High temperature for creativity; schema is still enforced by the provider.
 TEMPERATURE = float(os.environ.get("LLM_TEMPERATURE", "0.9"))
@@ -22,7 +22,6 @@ TEMPERATURE = float(os.environ.get("LLM_TEMPERATURE", "0.9"))
 GOOGLE_MODEL = os.environ.get("GOOGLE_MODEL", "gemini-3.5-flash")
 
 # OpenRouter model to use as fallback.
-# ZDR-protected models (e.g. google/*) require privacy settings at openrouter.ai/settings/privacy.
 OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "mistralai/mistral-large-2407")
 
 
