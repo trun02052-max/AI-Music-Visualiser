@@ -1,6 +1,6 @@
 @echo off
-set GOOGLE_API_KEY=AQ.Ab8RN6JSwidaknBN5NKvZmxfzFHweHrsQncfcoVNRMbTo5CnQQ
-set OPENROUTER_API_KEY=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
+set GOOGLE_API_KEY=plsbringkey
+set OPENROUTER_API_KEY=urownkey
 
 echo ==========================================
 echo   Starting Vidthing servers
