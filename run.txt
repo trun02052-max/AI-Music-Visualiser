@@ -1,0 +1,56 @@
+`router.py` is written. Here's what it does:
+
+**Primary:** Google GenAI (`google-genai` SDK) with:
+- `response_mime_type="application/json"` + `response_schema=<Pydantic schema>` for strict schema enforcement
+- `temperature=0.9` for creativity
+
+**Fallback:** OpenRouter (`openai` SDK pointed at `openrouter.ai/api/v1`) with:
+- `response_format={"type": "json_object", "schema": <Pydantic schema>}`
+- Same temperature
+
+**Usage:**
+```python
+from router import generate
+from pydantic import BaseModel
+
+class VisualSchema(BaseModel):
+    background: dict
+    camera: dict
+    objects: list
+
+result = generate("Create a psychedelic visual for this music analysis...", VisualSchema)
+# result is a validated dict
+```
+
+**Env vars to set:**
+- `GOOGLE_API_KEY` — primary
+- `OPENROUTER_API_KEY` — fallback
+- Optional: `GOOGLE_MODEL`, `OPENROUTER_MODEL`, `LLM_TEMPERATURE`
+
+I also added `google-genai` and `openai` to `python-server/requirements.txt`.
+
+
+Done. Here's what was set up:
+
+**`run_router.py`** — driver script that:
+- Reads culled analysis JSON from stdin
+- Calls `router.generate(prompt, VisualSchema)`
+- Prints the generated visual JSON to stdout
+
+**`index.js`** changes (old code commented, not deleted):
+- Added `ROUTER_SCRIPT` constant pointing to `run_router.py`
+- After the Python analysis returns, it pipes `analysis.culled_analysis` into `python run_router.py` via `execSync`
+- The generated `visualJson` is passed to the result template
+- Router failure is non-fatal (logs error, continues without visuals)
+
+**`result.ejs`** changes:
+- New "Visual Generation (LLM Router)" card showing status
+- **▶ Visualize** button opens the visual engine with the generated JSON
+- **Show JSON** button toggles the raw output
+
+**`visual-engine/index.html`** changes:
+- On load, checks `?data=` URL parameter and renders that JSON instead of the demo
+
+**Flow:** Upload audio → Python server analyzes → Node server forwards culled analysis to router (Google GenAI → OpenRouter fallback) → Visual JSON generated → Visualize button renders it in Three.js.
+
+**To test:** Set `GOOGLE_API_KEY` (and optionally `OPENROUTER_API_KEY`) env vars, upload an audio file, click **▶ Visualize**.

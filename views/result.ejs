@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Audio Analysis Result</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 900px; margin: 30px auto; padding: 20px; background: #f5f5f5; }
+    .card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    h1 { color: #333; }
+    h2 { color: #555; border-bottom: 2px solid #007bff; padding-bottom: 8px; margin-top: 0; }
+    .meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+    .meta-item { background: #f8f9fa; padding: 10px; border-radius: 5px; }
+    .meta-item strong { display: block; color: #666; font-size: 12px; text-transform: uppercase; }
+    .meta-item span { font-size: 18px; color: #333; }
+    pre { background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 13px; }
+    .band { display: inline-block; margin: 5px 10px 5px 0; padding: 6px 12px; background: #e3f2fd; border-radius: 20px; font-size: 14px; }
+    a { color: #007bff; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .back { margin-top: 20px; }
+    .btn { padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; }
+    .btn:hover { background: #218838; }
+    .btn:disabled { background: #6c757d; cursor: not-allowed; }
+    .error { color: #dc3545; background: #f8d7da; padding: 10px; border-radius: 5px; margin-top: 10px; }
+    .success { color: #155724; background: #d4edda; padding: 10px; border-radius: 5px; margin-top: 10px; }
+    .info { color: #004085; background: #d1ecf1; padding: 10px; border-radius: 5px; margin-top: 10px; }
+    .stems-list { list-style: none; padding: 0; margin-top: 10px; }
+    .stems-list li { padding: 8px; background: #f8f9fa; margin: 5px 0; border-radius: 4px; font-family: monospace; }
+  </style>
+</head>
+<body>
+  <h1>Audio Analysis Result</h1>
+
+  <div class="card">
+    <h2>File Info</h2>
+    <div class="meta">
+      <div class="meta-item"><strong>Filename</strong><span><%= file.filename %></span></div>
+      <div class="meta-item"><strong>Size</strong><span><%= (file.size / 1024).toFixed(2) %> KB</span></div>
+      <div class="meta-item"><strong>Type</strong><span><%= file.mimetype %></span></div>
+      <div class="meta-item"><strong>Duration</strong><span><%= file.analysis.duration_seconds %> s</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Rhythm</h2>
+    <div class="meta">
+      <div class="meta-item"><strong>Tempo</strong><span><%= file.analysis.tempo_bpm %> BPM</span></div>
+      <div class="meta-item"><strong>Beat Count</strong><span><%= file.analysis.beat_count %></span></div>
+      <div class="meta-item"><strong>Sample Rate</strong><span><%= file.analysis.sample_rate %> Hz</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Spectral Features</h2>
+    <div class="meta">
+      <div class="meta-item"><strong>Spectral Centroid</strong><span><%= file.analysis.spectral_centroid.mean %> Hz</span></div>
+      <div class="meta-item"><strong>Spectral Rolloff</strong><span><%= file.analysis.spectral_rolloff.mean %> Hz</span></div>
+      <div class="meta-item"><strong>ZCR Mean</strong><span><%= file.analysis.zero_crossing_rate.mean %></span></div>
+      <div class="meta-item"><strong>RMS Mean</strong><span><%= file.analysis.rms_energy.mean %></span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Frequency Bands</h2>
+    <div>
+      <span class="band">Bass (20-250 Hz): <%= (file.analysis.frequency_bands.bass_20_250hz * 100).toFixed(1) %>%></span>
+      <span class="band">Mid (250-4000 Hz): <%= (file.analysis.frequency_bands.mid_250_4000hz * 100).toFixed(1) %>%></span>
+      <span class="band">Treble (4000-20000 Hz): <%= (file.analysis.frequency_bands.treble_4000_20000hz * 100).toFixed(1) %>%></span>
+    </div>
+    <p style="margin-top: 15px; color: #666;">
+      <strong>Instrument Estimate:</strong> 
+      <%= file.analysis.instruments_estimate.dominant_bands.join(', ') %>
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>Visual Generation (LLM Router)</h2>
+    <% if (file.visualJson) { %>
+      <div class="success">Visual JSON generated successfully.</div>
+      <button class="btn" style="background:#9334E6;" onclick="openVisualizer()">▶ Visualize</button>
+      <button class="btn" style="background:#6c757d;" onclick="toggleVisualJson()">Show JSON</button>
+      <pre id="visualJson" style="display:none; margin-top:10px;"><%= JSON.stringify(file.visualJson, null, 2) %></pre>
+    <% } else { %>
+      <div class="info">No visual JSON generated (router may be unavailable or returned no culled analysis).</div>
+    <% } %>
+  </div>
+
+  <div class="card">
+    <h2>Stem Separation (Demucs on Colab)</h2>
+    <p>Forward this file to your Colab GPU instance for stem separation.</p>
+    <div style="margin-bottom: 15px;">
+      <label for="colabUrlInput" style="display:block; font-weight:bold; margin-bottom:5px; color:#444;">
+        Colab Address / Forwarded Link:
+      </label>
+      <input 
+        type="text" 
+        id="colabUrlInput" 
+        value="<%= file.colabUrl || 'http://localhost:8888' %>" 
+        style="width: 100%; max-width: 550px; padding: 9px 12px; font-size: 14px; border: 1px solid #ced4da; border-radius: 5px; font-family: monospace;" 
+        placeholder="e.g. http://localhost:8888 or https://...devtunnels.ms"
+      />
+      <small style="display:block; color:#6c757d; margin-top:5px;">
+        💡 <strong>Tip:</strong> Paste the exact link or address shown in your VS Code <strong>Ports</strong> tab here.
+      </small>
+    </div>
+    <button id="separateBtn" class="btn" onclick="separateStems()">Send to Colab</button>
+    <div id="separateStatus"></div>
+  </div>
+
+  <div class="card">
+    <h2>Raw JSON Responses</h2>
+    <div style="margin-bottom: 15px;">
+      <button class="btn" style="background:#007bff;" onclick="showTab('full')">Full Analysis</button>
+      <button class="btn" style="background:#6c757d;" onclick="showTab('culled')">Culled Analysis</button>
+    </div>
+    <pre id="fullJson"><%= JSON.stringify(file.analysis, null, 2) %></pre>
+    <pre id="culledJson" style="display:none;"><%= JSON.stringify(file.analysis.culled_analysis, null, 2) %></pre>
+  </div>
+
+  <script>
+    function showTab(tab) {
+      document.getElementById('fullJson').style.display = tab === 'full' ? 'block' : 'none';
+      document.getElementById('culledJson').style.display = tab === 'culled' ? 'block' : 'none';
+    }
+
+    function toggleVisualJson() {
+      const el = document.getElementById('visualJson');
+      el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function openVisualizer() {
+      const json = <%- JSON.stringify(file.visualJson || null) %>;
+      if (!json) return;
+      const data = encodeURIComponent(JSON.stringify(json));
+      window.open('/visual/?data=' + data, '_blank');
+    }
+  </script>
+
+  <div class="back">
+    <a href="/">Upload Another</a>
+  </div>
+
+  <script>
+    async function separateStems() {
+      const btn = document.getElementById('separateBtn')
+      const status = document.getElementById('separateStatus')
+      const colabUrlInput = document.getElementById('colabUrlInput')
+      const colabUrl = colabUrlInput ? colabUrlInput.value.trim() : ''
+      
+      btn.disabled = true
+      btn.textContent = 'Forwarding to Colab...'
+      status.innerHTML = `<div class="info">Sending file to Colab (${colabUrl || 'default'}). This may take a minute...</div>`
+
+      try {
+        const form = new FormData()
+        form.append('id', '<%= file.id %>')
+        if (colabUrl) {
+          form.append('colab_url', colabUrl)
+        }
+
+        const response = await fetch('/separate', {
+          method: 'POST',
+          body: form
+        })
+
+        const data = await response.json()
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Forward failed')
+        }
+
+        status.innerHTML = '<div class="success">Audio forwarded to Colab successfully! Check your Colab output.</div>'
+      } catch (err) {
+        status.innerHTML = `<div class="error">${err.message}</div>`
+      } finally {
+        btn.disabled = false
+        btn.textContent = 'Send to Colab'
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vidthing Visual Engine</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; overflow: hidden; font-family: Arial, sans-serif; }
+    #canvas-container { width: 100vw; height: 100vh; }
+    #controls {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      z-index: 100;
+      background: rgba(0,0,0,0.7);
+      padding: 15px;
+      border-radius: 8px;
+      color: #fff;
+      max-width: 300px;
+    }
+    #controls h2 { font-size: 16px; margin-bottom: 10px; }
+    #controls button {
+      padding: 8px 12px;
+      margin: 5px 5px 5px 0;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    #controls button:hover { background: #0056b3; }
+    #status { margin-top: 10px; font-size: 12px; color: #aaa; }
+    #json-input {
+      width: 100%;
+      height: 200px;
+      margin-top: 10px;
+      background: #111;
+      color: #0f0;
+      border: 1px solid #333;
+      border-radius: 4px;
+      padding: 8px;
+      font-family: monospace;
+      font-size: 11px;
+      resize: vertical;
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "/visual/lib/three.module.js",
+        "three/addons/": "/visual/lib/three/addons/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="canvas-container"></div>
+  <div id="controls">
+    <h2>Visual Engine</h2>
+    <button onclick="loadDemo()">Load Demo</button>
+    <button onclick="loadFromUrl()">Load From URL</button>
+    <button onclick="renderFromInput()">Render JSON</button>
+    <textarea id="json-input" placeholder="Paste scene JSON here..."></textarea>
+    <div id="status">Ready</div>
+  </div>
+  <script type="module" src="./src/main.js"></script>
+  <script>
+    window.addEventListener('error', function(e) {
+      if (e.target && e.target.tagName === 'SCRIPT' && e.target.type === 'module') {
+        document.getElementById('status').textContent = 'Module load error: ' + (e.message || 'Check console for details')
+        console.error('Module failed to load:', e.target.src, e)
+      }
+    }, true)
+
+    window.addEventListener('unhandledrejection', function(e) {
+      console.error('Unhandled promise rejection:', e.reason)
+      document.getElementById('status').textContent = 'JS Error: ' + (e.reason?.message || 'Check console')
+    })
+
+    function updateStatus(msg) {
+      document.getElementById('status').textContent = msg
+    }
+
+    function loadDemo() {
+      updateStatus('Loading demo scene...')
+      const demo = {
+        background: { gradient: ['#000010', '#1a0a2e', '#2d1b4e'] },
+        camera: { fov: 75, position: [0, 2, 10], lookAt: [0, 0, 0] },
+        lighting: [
+          { type: 'ambient', color: '#404040', intensity: 0.5 },
+          { type: 'point', color: '#ff6600', intensity: 2, position: [5, 5, 5] },
+          { type: 'point', color: '#0066ff', intensity: 2, position: [-5, -5, 5] }
+        ],
+        objects: [
+          {
+            type: 'particles',
+            id: 'particles1',
+            count: 2000,
+            position: [0, 0, 0],
+            size: 15,
+            color: '#ff00ff',
+            colors: ['#ff00ff', '#00ffff', '#ffff00', '#ff6600'],
+            motion: { type: 'swarm', speed: 1, amplitude: 2 },
+            startTime: 0,
+            endTime: 30
+          },
+          {
+            type: 'torus',
+            id: 'torus1',
+            radius: 3,
+            tubeRadius: 0.1,
+            position: [0, 0, 0],
+            color: '#ff00ff',
+            rotation: [Math.PI / 2, 0, 0],
+            motion: { type: 'rotate', axis: 'z', speed: 0.5 },
+            startTime: 0,
+            endTime: 30
+          },
+          {
+            type: 'ring',
+            id: 'ring1',
+            radius: 4,
+            tubeRadius: 0.05,
+            position: [0, 0, 0],
+            color: '#00ffff',
+            motion: { type: 'rotate', axis: 'x', speed: 0.3 },
+            startTime: 0,
+            endTime: 30
+          },
+          {
+            type: 'stars',
+            id: 'stars1',
+            count: 500,
+            position: [0, 0, 0],
+            opacity: 0.8,
+            motion: { type: 'rotate', axis: 'y', speed: 0.1 },
+            startTime: 0,
+            endTime: 30
+          },
+          {
+            type: 'sphere',
+            id: 'sphere1',
+            radius: 1.5,
+            position: [0, 0, 0],
+            color: '#ffff00',
+            motion: { type: 'pulse', speed: 1, amplitude: 0.5 },
+            startTime: 0,
+            endTime: 30
+          }
+        ],
+        effects: {
+          bloom: { enabled: true, strength: 1.5, radius: 0.4, threshold: 0.1 },
+          chromaticAberration: { enabled: true, offset: 0.003 },
+          vignette: { enabled: true, offset: 0.5, darkness: 1.2 },
+          kaleidoscope: { enabled: true, slices: 6 }
+        },
+        global: { timeScale: 1, loop: true, duration: 30 }
+      }
+
+      const textarea = document.getElementById('json-input')
+      textarea.value = JSON.stringify(demo, null, 2)
+
+      function tryLoad() {
+        if (window.visualEngine) {
+          window.visualEngine('canvas-container', demo)
+          updateStatus('Demo loaded')
+        } else {
+          updateStatus('Engine not ready yet, retrying...')
+          setTimeout(tryLoad, 500)
+        }
+      }
+
+      let retries = 0
+      function tryLoad() {
+        if (window.visualEngine) {
+          window.visualEngine('canvas-container', demo)
+          updateStatus('Demo loaded')
+        } else if (retries < 40) {
+          retries++
+          updateStatus('Engine not ready yet, retrying... (' + retries + '/40)')
+          setTimeout(tryLoad, 500)
+        } else {
+          updateStatus('Failed to load engine. Open browser console (F12) to see errors.')
+        }
+      }
+
+      tryLoad()
+    }
+
+    function loadFromUrl() {
+      const url = prompt('Enter scene JSON URL:')
+      if (!url) return
+      updateStatus('Loading from URL...')
+      fetch(url)
+        .then(r => r.json())
+        .then(data => {
+          document.getElementById('json-input').value = JSON.stringify(data, null, 2)
+          if (window.visualEngine) {
+            window.visualEngine('canvas-container', data)
+          }
+          updateStatus('Loaded from URL')
+        })
+        .catch(e => updateStatus('Error: ' + e.message))
+    }
+
+    function renderFromInput() {
+      const textarea = document.getElementById('json-input')
+      try {
+        const data = JSON.parse(textarea.value)
+        if (window.visualEngine) {
+          window.visualEngine('canvas-container', data)
+          updateStatus('Rendering custom scene')
+        } else {
+          updateStatus('Engine not ready yet')
+        }
+      } catch (e) {
+        updateStatus('Invalid JSON: ' + e.message)
+      }
+    }
+
+    window.addEventListener('load', () => {
+      // If a JSON payload was passed via ?data=..., load it instead of the demo.
+      const params = new URLSearchParams(window.location.search)
+      const encoded = params.get('data')
+      if (encoded) {
+        try {
+          const data = JSON.parse(decodeURIComponent(encoded))
+          const textarea = document.getElementById('json-input')
+          textarea.value = JSON.stringify(data, null, 2)
+          function tryLoad() {
+            if (window.visualEngine) {
+              window.visualEngine('canvas-container', data)
+              updateStatus('Loaded scene from URL parameter')
+            } else if (retries < 40) {
+              retries++
+              updateStatus('Engine not ready yet, retrying... (' + retries + '/40)')
+              setTimeout(tryLoad, 500)
+            } else {
+              updateStatus('Failed to load engine. Open browser console (F12) to see errors.')
+            }
+          }
+          let retries = 0
+          tryLoad()
+        } catch (e) {
+          updateStatus('Invalid JSON in URL parameter: ' + e.message)
+        }
+      } else {
+        setTimeout(() => loadDemo(), 500)
+      }
+    })
+  </script>
+</body>
+</html>
